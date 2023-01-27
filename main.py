@@ -13,8 +13,8 @@ logging.basicConfig(level=logging.INFO)
 
 HEROKU_APP_NAME = os.getenv('HEROKU_APP_NAME')
 
-CHANNEL_ID = os.getenv('CHANNEL_ID')
-SUPER_USERS = (598564736, 731860478, 223238862)
+CHANNEL_ID1 = os.getenv('CHANNEL_ID1')
+CHANNEL_ID2 = os.getenv('CHANNEL_ID2')
 
 WEBHOOK_HOST = f'https://{HEROKU_APP_NAME}.herokuapp.com'
 WEBHOOK_PATH = f'/webhook/{TOKEN}'
@@ -44,13 +44,23 @@ async def process_help_command(message: types.Message):
 
 
 @dp.message_handler(content_types=types.ContentType.all())
+async def reply_echo(msg: types.Message):
+    await bot.send_message(msg.from_user.id, f"всі кажуть {msg.text}, а ти візьми і відрахуйся")
+
+
+@dp.channel_post_handler(lambda message: message.chat.id == CHANNEL_ID1, content_types=types.ContentType.ANY)
 async def echo_message(msg: types.Message):
-    logging.info("BP1")
-    #check if vika
-    if msg.from_user.id in SUPER_USERS:
-        await bot.forward_message(CHANNEL_ID, msg.from_user.id, msg.message_id)
+
+    if msg.text:
+        await bot.send_message(CHANNEL_ID2, msg.text)
+    if msg.photo:
+        ph = msg.photo
+        await bot.send_photo(CHANNEL_ID2, ph[len(ph) - 1].file_id, caption=msg.caption)
+    elif msg.document:
+        doc = msg.document
+        await bot.send_document(CHANNEL_ID2, doc.file_id, caption = msg.caption)
     else:
-        await bot.send_message(msg.from_user.id, f"всі кажуть {msg.text}, а ти візьми і відрахуйся")
+        await bot.forward_message(CHANNEL_ID2, msg.chat.id, msg.message_id)
 
 #----------------------------------------------------------------
 
