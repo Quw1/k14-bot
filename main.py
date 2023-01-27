@@ -1,18 +1,36 @@
-from aiogram import Bot, types
-from aiogram.dispatcher import Dispatcher
-from aiogram.utils import executor
 import logging
+import os
+from aiogram import Bot
+from aiogram.dispatcher import Dispatcher
+from aiogram.utils.executor import start_webhook
+from aiogram import Bot, types
 
-from config import TOKEN
 
-
+TOKEN = os.getenv('BOT_TOKEN')
 bot = Bot(token=TOKEN)
 dp = Dispatcher(bot)
 logging.basicConfig(level=logging.INFO)
 
-CHANNEL_ID = -1001845349384
-SUPER_USERS = (598564736, 731860478)
+HEROKU_APP_NAME = os.getenv('HEROKU_APP_NAME')
 
+CHANNEL_ID = os.getenv('CHANNEL_ID')
+SUPER_USERS = (598564736, 731860478, 223238862)
+
+WEBHOOK_HOST = f'https://{HEROKU_APP_NAME}.herokuapp.com'
+WEBHOOK_PATH = f'/webhook/{TOKEN}'
+WEBHOOK_URL = f'{WEBHOOK_HOST}{WEBHOOK_PATH}'
+
+WEBAPP_HOST = '0.0.0.0'
+WEBAPP_PORT = os.getenv('PORT', default=8000)
+
+async def on_startup(dispatcher):
+    await bot.set_webhook(WEBHOOK_URL, drop_pending_updates=True)
+
+async def on_shutdown(dispatcher):
+    await bot.delete_webhook()
+
+
+#----------------------------------------------------------------
 
 @dp.message_handler(commands=['start'])
 async def process_start_command(message: types.Message):
@@ -24,12 +42,6 @@ async def process_help_command(message: types.Message):
     await message.reply("не можу")
 
 
-# @dp.message_handler(chat_type=[types.ChatType.CHANNEL, types.ChatType.GROUP])
-# async def group_handler(msg: types.Message):
-#     logging.info("here is a group")
-#     logging.info(msg)
-#     await bot.send_message(-1001845349384, "hui")
-
 
 @dp.message_handler(content_types=types.ContentType.all())
 async def echo_message(msg: types.Message):
@@ -40,6 +52,16 @@ async def echo_message(msg: types.Message):
     else:
         await bot.send_message(msg.from_user.id, f"всі кажуть {msg.text}, а ти візьми і відрахуйся")
 
+#----------------------------------------------------------------
 
 if __name__ == '__main__':
-    executor.start_polling(dp)
+    logging.basicConfig(level=logging.INFO)
+    start_webhook(
+        dispatcher=dp,
+        webhook_path=WEBHOOK_PATH,
+        skip_updates=True,
+        on_startup=on_startup,
+        on_shutdown=on_shutdown,
+        host=WEBAPP_HOST,
+        port=WEBAPP_PORT,
+    )
